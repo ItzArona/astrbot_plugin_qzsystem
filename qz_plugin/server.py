@@ -32,7 +32,11 @@ from typing import Any
 import astrbot.api.message_components as Comp
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
-from astrbot.core.utils.session_waiter import SessionController, session_waiter
+from astrbot.core.utils.session_waiter import (
+    SessionController,
+    SessionFilter,
+    session_waiter,
+)
 
 from . import endpoints as E
 from .helpers import host_header, parse_kwargs, safe_call
@@ -52,6 +56,13 @@ _CREATE_STEPS = [
     ("sys_pwd", "⑧ 请输入系统密码 (建议私聊执行本向导)："),
     ("expire_time", "⑨ 请输入到期时间 (YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS)："),
 ]
+
+
+class _UserSessionFilter(SessionFilter):
+    """按发送者 id 区分会话，避免群聊里多人同时进向导时互相串扰。"""
+
+    def filter(self, event: AstrMessageEvent) -> str:
+        return f"{event.unified_msg_origin}:{event.get_sender_id()}"
 
 
 def _parse_renew_date(text: str) -> str:
@@ -160,22 +171,18 @@ async def server_screenshot(
     except Exception as exc:  # noqa: BLE001
         return f"{host_header(label, hostid)} 截图解码失败：{exc}"
     fd, path = tempfile.mkstemp(prefix="qz_thumb_", suffix=".png")
-    try:
-        with os.fdopen(fd, "wb") as f:
-            f.write(raw)
-        await event.send(
-            event.chain_result(
-                [
-                    Comp.Plain(f"{host_header(label, hostid)} 运行截图："),
-                    Comp.Image.fromFileSystem(path),
-                ]
-            )
+    with os.fdopen(fd, "wb") as f:
+        f.write(raw)
+    # 交给事件生命周期统一清理，避免平台异步发送时文件被提前删除
+    event.track_temporary_local_file(path)
+    await event.send(
+        event.chain_result(
+            [
+                Comp.Plain(f"{host_header(label, hostid)} 运行截图："),
+                Comp.Image.fromFileSystem(path),
+            ]
         )
-    finally:
-        try:
-            os.unlink(path)
-        except OSError:
-            pass
+    )
     return None
 
 
@@ -492,7 +499,8 @@ async def server_delete(plugin: Any, event: AstrMessageEvent, alias: str = "") -
         alias = ""
     hostid, label = await resolve_hostid(plugin, event, alias)
     if plugin.cfg.require_confirm and not has_confirm(event.message_str):
-        return f"{host_header(label, hostid)} ⚠️ 删除不可逆。确认请发送：/server delete {label if label != hostid else ''} confirm".strip()
+        alias_part = f"{label} " if label != hostid else ""
+        return f"{host_header(label, hostid)} ⚠️ 删除不可逆。确认请发送：/server delete {alias_part}confirm"
     _, err = await safe_call(
         plugin, plugin.client.post(E.REMOVE_HOST, {"hostid": hostid})
     )
@@ -634,7 +642,7 @@ async def server_create(plugin: Any, event: AstrMessageEvent) -> str | None:
         controller.keep(timeout=60, reset_timeout=True)
 
     try:
-        await wizard(event)
+        await wizard(event, session_filter=_UserSessionFilter())
     except TimeoutError:
         await event.send(event.plain_result("⌛ 创建向导超时已退出。"))
     except Exception as exc:  # noqa: BLE001

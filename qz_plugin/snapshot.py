@@ -89,6 +89,9 @@ async def snapshot_del(
 async def snapshot_restore(
     plugin: Any, event: AstrMessageEvent, id: str, alias: str = ""
 ) -> str:
+    # 用户输入 /snapshot restore <id> confirm 时，confirm 会被位置参数解析进 alias，需清回
+    if (alias or "").strip() in ("confirm", "确认"):
+        alias = ""
     hostid, label = await resolve_hostid(plugin, event, alias)
     if not id:
         return "请提供快照 id：/snapshot restore <id>"

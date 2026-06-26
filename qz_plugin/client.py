@@ -25,6 +25,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 from urllib.parse import quote
 
@@ -115,7 +116,9 @@ class QzsystemClient:
                     )
         except aiohttp.ClientError as exc:
             raise QzsystemError(f"网络请求失败: {exc}") from exc
-        except TimeoutError as exc:
+        except (TimeoutError, asyncio.TimeoutError) as exc:
+            # Python 3.11+ builtins.TimeoutError 即 asyncio.TimeoutError；
+            # 3.10 两者不同，需同时捕获。
             raise QzsystemError(f"请求超时: {exc}") from exc
 
         if not isinstance(payload, dict):

@@ -22,6 +22,8 @@ from typing import Any
 
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, MessageChain
+from astrbot.core.platform.message_session import MessageSession
+from astrbot.core.platform.message_type import MessageType
 
 from .permissions import is_group_chat
 
@@ -68,24 +70,22 @@ async def send_private_message(
 ) -> bool:
     """尽力把全文私聊发给当前触发者；失败返回 False。
 
-    通过解析 ``unified_msg_origin`` 并把末段会话 id 替换为发送者 id，构造私聊 UMO。
-    仅对常见平台格式有效；不支持的格式静默失败，由调用方回退提示用户私聊重发。
+    用发送者 id 构造一个 FRIEND_MESSAGE 类型的 MessageSession，
+    交由 ``context.send_message`` 找到对应平台适配器私聊发送。
+    若平台不支持私聊（如 qq_official）会静默失败，由调用方回退提示用户私聊重发。
     """
-    umo = getattr(event, "unified_msg_origin", "") or ""
-    if not umo:
-        return False
-    parts = umo.split(":")
-    if len(parts) < 3:
-        return False
-    # 末段是会话 id（群 id 或私聊对方 id）；用发送者 id 替换构造私聊会话
     sender_id = event.get_sender_id()
-    if not sender_id:
+    platform_id = event.get_platform_id()
+    if not sender_id or not platform_id:
         return False
-    parts[-1] = str(sender_id)
-    private_umo = ":".join(parts)
+    private_session = MessageSession(
+        platform_name=platform_id,
+        message_type=MessageType.FRIEND_MESSAGE,
+        session_id=str(sender_id),
+    )
     try:
         chain = MessageChain().message(text)
-        await plugin.context.send_message(private_umo, chain)
+        await plugin.context.send_message(private_session, chain)
         return True
     except Exception as exc:  # noqa: BLE001
         logger.debug(f"send_private_message 失用回退: {exc}")
