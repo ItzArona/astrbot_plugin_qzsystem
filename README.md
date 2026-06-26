@@ -10,7 +10,7 @@
 
 ```bash
 cd AstrBot/data/plugins
-git clone <本仓库地址> astrbot_plugin_qzsystem
+git clone https://github.com/ItzArona/astrbot_plugin_qzsystem astrbot_plugin_qzsystem
 ```
 
 然后在 WebUI → 插件管理 → 重载插件。AstrBot 会自动安装 `requirements.txt` 里的 `aiohttp`。
