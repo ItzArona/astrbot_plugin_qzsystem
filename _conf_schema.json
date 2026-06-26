@@ -1,0 +1,67 @@
+{
+  "base_url": {
+    "description": "轻舟云主控 API 基础地址",
+    "type": "string",
+    "hint": "如 https://xxx.qzsystem.com ，不要带末尾斜杠。所有接口将拼接 /api/v1/* 。",
+    "default": "",
+    "obvious_hint": true
+  },
+  "signature": {
+    "description": "主控后台第三方财务 key (signature)",
+    "type": "string",
+    "hint": "主控后台 → 第三方财务 里获取的密钥。保存后不在面板明文展示。",
+    "default": "",
+    "invisible": true
+  },
+  "apiuser": {
+    "description": "财务用户名 (apiuser)",
+    "type": "string",
+    "hint": "财务中开通产品的用户名。",
+    "default": "",
+    "obvious_hint": true
+  },
+  "hosts": {
+    "description": "云主机别名表",
+    "type": "list",
+    "hint": "把常用的 hostid 起一个别名，命令里可用别名代替 hostid。如 web1 -> 3145。",
+    "default": [],
+    "items": {
+      "alias": {
+        "description": "别名",
+        "type": "string",
+        "default": ""
+      },
+      "hostid": {
+        "description": "云主机实例 id",
+        "type": "string",
+        "default": ""
+      },
+      "remark": {
+        "description": "备注",
+        "type": "string",
+        "default": ""
+      }
+    }
+  },
+  "request_timeout": {
+    "description": "单次 API 请求超时(秒)",
+    "type": "int",
+    "default": 30,
+    "hint": "创建/重装等耗时操作可适当调大。"
+  },
+  "text_to_image_threshold": {
+    "description": "文本超过该长度时自动转图片显示",
+    "type": "int",
+    "default": 150
+  },
+  "redact_in_group": {
+    "description": "群聊中对密码 / VNC / 面板链接等凭证脱敏，并通过私聊发送全文",
+    "type": "bool",
+    "default": true
+  },
+  "require_confirm": {
+    "description": "高危操作(删除/恢复快照/恢复备份)需在命令末尾带 confirm 才执行",
+    "type": "bool",
+    "default": true
+  }
+}
