@@ -2,7 +2,7 @@ name: astrbot_plugin_qzsystem
 desc: 轻舟云(qzsystem)主控管理插件，在 QQ 群内通过命令管理云主机实例、电源、快照、备份、防火墙、NAT 端口域名、VNC 等全量能力。
 version: 0.1.0
 author: astrbot_server_manegent
-repo: ""
+repo: https://github.com/ItzArona/astrbot_plugin_qzsystem
 display_name: 轻舟云主机管理
 short_desc: 在 QQ 内用命令管理轻舟云主控的全部云主机能力。
 support_platforms:
