@@ -37,7 +37,7 @@ from astrbot.core.utils.session_waiter import SessionController, session_waiter
 from . import endpoints as E
 from .helpers import host_header, parse_kwargs, safe_call
 from .permissions import is_group_chat
-from .redaction import emit_sensitive
+from .redaction import emit_sensitive, redact_info_dict
 from .render import fmt_kv
 from .store import has_confirm, resolve_hostid
 
@@ -113,12 +113,11 @@ async def server_info(plugin: Any, event: AstrMessageEvent, alias: str = "") -> 
         return f"{host_header(label, hostid)} 查询失败：{err}"
     info = data or {}
     # 凭证字段：群聊脱敏
-    show = info
-    if is_group_chat(event) and plugin.cfg.redact_in_group:
-        show = dict(info)
-        for k in ("os_password", "panel_password"):
-            if show.get(k):
-                show[k] = "****"
+    show = (
+        redact_info_dict(info)
+        if (is_group_chat(event) and plugin.cfg.redact_in_group)
+        else info
+    )
     rows = _info_rows(show)
     rows.append(("系统密码", show.get("os_password") or "(空)"))
     rows.append(("面板密码", show.get("panel_password") or "(空)"))
