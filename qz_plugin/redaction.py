@@ -18,7 +18,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from astrbot.api import logger
@@ -26,26 +25,7 @@ from astrbot.api.event import AstrMessageEvent, MessageChain
 
 from .permissions import is_group_chat
 
-# 匹配 http(s)://... 或 base64 图片数据等长串里的密码 query 参数
-_PWD_QUERY_RE = re.compile(r"(password|panel_password)=([^&\s]+)", re.IGNORECASE)
-# 纯密码行/字段
-_PWD_FIELD_RE = re.compile(
-    r"(?im)^\s*(系统密码|面板密码|os_password|panel_password)\s*[:：]\s*(.+)$"
-)
-# VNC url 里的 token 参数
-_TOKEN_QUERY_RE = re.compile(r"(token|password)=([^&\s]+)", re.IGNORECASE)
-
 _MASK = "****"
-
-
-def redact_secrets(text: str) -> str:
-    """对文本里的密码/凭证做掩码，用于群聊输出。"""
-    if not text:
-        return text
-    text = _PWD_QUERY_RE.sub(lambda m: f"{m.group(1)}={_MASK}", text)
-    text = _TOKEN_QUERY_RE.sub(lambda m: f"{m.group(1)}={_MASK}", text)
-    text = _PWD_FIELD_RE.sub(lambda m: f"{m.group(1)}: {_MASK}", text)
-    return text
 
 
 def redact_info_dict(info: dict[str, Any]) -> dict[str, Any]:

@@ -261,13 +261,6 @@ async def server_iso_list(plugin: Any, event: AstrMessageEvent, alias: str = "")
     return f"{host_header(label, hostid)} iso 文件列表\n\n" + "\n".join(items)
 
 
-async def _emit_sensitive(
-    plugin: Any, event: AstrMessageEvent, safe_text: str, full_text: str
-) -> None:
-    """群聊：群里发 safe_text(不含凭证) + 私聊发 full_text；私聊：直接发 full_text。"""
-    await emit_sensitive(plugin, event, safe_text, full_text)
-
-
 async def server_vnc(
     plugin: Any, event: AstrMessageEvent, alias: str = ""
 ) -> str | None:
@@ -280,7 +273,7 @@ async def server_vnc(
     url = (data or {}).get("url", "")
     safe = f"{host_header(label, hostid)} VNC 远程地址已通过私聊发送（含一次性凭证，请勿转发）。"
     full = f"{host_header(label, hostid)} VNC 远程地址：{url}\n（地址含一次性凭证，请勿转发，及时使用）"
-    await _emit_sensitive(plugin, event, safe, full)
+    await emit_sensitive(plugin, event, safe, full)
     return None
 
 
@@ -301,7 +294,7 @@ async def server_panel(
     url = plugin.client.build_panel_url(host_name, panel_pwd)
     safe = f"{host_header(label, hostid)} 独立控制台登录链接已通过私聊发送（含面板密码，请勿转发）。"
     full = f"{host_header(label, hostid)} 独立控制台链接：\n{url}\n（链接含面板密码明文，请勿在群内转发）"
-    await _emit_sensitive(plugin, event, safe, full)
+    await emit_sensitive(plugin, event, safe, full)
     return None
 
 
@@ -394,7 +387,7 @@ async def server_reset_os_pwd(
         return f"{host_header(label, hostid)} 重置失败：{err}"
     safe = f"{host_header(label, hostid)} 系统密码已重置（新密码已通过私聊发送）。"
     full = f"{host_header(label, hostid)} 系统密码已重置为：{password}"
-    await _emit_sensitive(plugin, event, safe, full)
+    await emit_sensitive(plugin, event, safe, full)
     return None
 
 
@@ -414,7 +407,7 @@ async def server_reset_panel_pwd(
         return f"{host_header(label, hostid)} 重置失败：{err}"
     safe = f"{host_header(label, hostid)} 面板密码已重置（新密码已通过私聊发送）。"
     full = f"{host_header(label, hostid)} 面板密码已重置为：{password}"
-    await _emit_sensitive(plugin, event, safe, full)
+    await emit_sensitive(plugin, event, safe, full)
     return None
 
 
@@ -436,7 +429,7 @@ async def server_reinstall(
         f"{host_header(label, hostid)} 已发起重装系统请求\n镜像：{template}\n"
         f"新密码：{password}\n⚠️ 重装会清空系统盘，耗时较长。"
     )
-    await _emit_sensitive(plugin, event, safe, full)
+    await emit_sensitive(plugin, event, safe, full)
     return None
 
 
