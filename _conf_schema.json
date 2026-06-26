@@ -22,24 +22,30 @@
   },
   "hosts": {
     "description": "云主机别名表",
-    "type": "list",
-    "hint": "把常用的 hostid 起一个别名，命令里可用别名代替 hostid。如 web1 -> 3145。",
+    "type": "template_list",
+    "hint": "把常用的 hostid 起一个别名，命令里可用别名代替 hostid。每条点 + 添加一个“云主机别名”条目，填好别名与 hostid。",
     "default": [],
-    "items": {
-      "alias": {
-        "description": "别名",
-        "type": "string",
-        "default": ""
-      },
-      "hostid": {
-        "description": "云主机实例 id",
-        "type": "string",
-        "default": ""
-      },
-      "remark": {
-        "description": "备注",
-        "type": "string",
-        "default": ""
+    "templates": {
+      "host": {
+        "name": "云主机别名",
+        "display_item": "alias",
+        "items": {
+          "alias": {
+            "description": "别名",
+            "type": "string",
+            "default": ""
+          },
+          "hostid": {
+            "description": "云主机实例 id",
+            "type": "string",
+            "default": ""
+          },
+          "remark": {
+            "description": "备注",
+            "type": "string",
+            "default": ""
+          }
+        }
       }
     }
   },

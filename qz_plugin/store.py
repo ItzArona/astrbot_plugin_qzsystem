@@ -59,7 +59,8 @@ async def bind_user(
     hostid = cfg.alias_to_hostid(value)
     if hostid is None:
         return (
-            f"未找到别名 “{value}”。请先在插件配置 hosts 里添加，或直接传 hostid 数字。"
+            f"未找到别名 “{value}”。请要么直接传 hostid 数字（如 /qz bind 3145），"
+            f"要么先在 WebUI 插件配置的“云主机别名表”里添加一条：别名={value}，hostid=<实例id>。"
         )
     await plugin.put_kv_data(_kv_key(event.get_sender_id()), hostid)
     label = cfg.hostid_to_alias(hostid)

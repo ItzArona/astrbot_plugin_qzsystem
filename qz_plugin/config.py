@@ -39,7 +39,19 @@ class PluginConfig:
 
     @property
     def hosts(self) -> list[dict[str, str]]:
-        return list(self._c.get("hosts", []) or [])
+        """别名表，过滤掉非 dict 条目与 template_list 的 __template_key 元字段。"""
+        out: list[dict[str, str]] = []
+        for item in self._c.get("hosts", []) or []:
+            if not isinstance(item, dict):
+                continue
+            entry = {
+                "alias": str(item.get("alias", "") or "").strip(),
+                "hostid": str(item.get("hostid", "") or "").strip(),
+                "remark": str(item.get("remark", "") or ""),
+            }
+            if entry["alias"] and entry["hostid"]:
+                out.append(entry)
+        return out
 
     @property
     def request_timeout(self) -> int:
@@ -71,15 +83,13 @@ class PluginConfig:
         if alias.isdigit():
             return alias
         for item in self.hosts:
-            if str(item.get("alias", "")).strip() == alias:
-                return str(item.get("hostid", "")).strip() or None
+            if item["alias"] == alias:
+                return item["hostid"]
         return None
 
     def hostid_to_alias(self, hostid: str) -> str:
         hostid = str(hostid)
         for item in self.hosts:
-            if str(item.get("hostid", "")).strip() == hostid:
-                a = str(item.get("alias", "")).strip()
-                if a:
-                    return a
+            if item["hostid"] == hostid:
+                return item["alias"]
         return hostid
