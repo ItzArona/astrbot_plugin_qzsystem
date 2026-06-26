@@ -277,7 +277,6 @@ class QzsystemPlugin(Star):
         if text:
             yield await emit(self, event, text)
 
-    @filter.permission_type(filter.PermissionType.ADMIN)
     @server_group.group("iso")
     def server_iso_group(self) -> None:
         """iso 挂载管理"""
@@ -368,7 +367,6 @@ class QzsystemPlugin(Star):
         yield event.plain_result("🛠 开始创建云主机向导（回复“取消”随时退出）。")
         await server_create(self, event)
 
-    @filter.permission_type(filter.PermissionType.ADMIN)
     @server_group.group("ip")
     def server_ip_group(self) -> None:
         """IP 管理"""
