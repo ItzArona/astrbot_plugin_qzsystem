@@ -37,7 +37,7 @@ from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star
 
-from qz_plugin.client import build_client
+from qz_plugin.backend import build_client
 from qz_plugin.config import PluginConfig
 from qz_plugin.render import emit
 from qz_plugin.store import bind_user, resolve_hostid, unbind_user
