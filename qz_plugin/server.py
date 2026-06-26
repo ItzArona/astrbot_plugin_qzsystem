@@ -37,7 +37,7 @@ from astrbot.core.utils.session_waiter import SessionController, session_waiter
 from . import endpoints as E
 from .helpers import host_header, parse_kwargs, safe_call
 from .permissions import is_group_chat
-from .redaction import redact_secrets, send_private_message
+from .redaction import emit_sensitive
 from .render import fmt_kv
 from .store import has_confirm, resolve_hostid
 
@@ -47,9 +47,10 @@ _CREATE_STEPS = [
     ("cpu", "③ 请输入 CPU 核心数："),
     ("memory", "④ 请输入内存大小 (MB，如 2048)："),
     ("sys_disk_size", "⑤ 请输入系统盘大小 (GB，如 40)："),
-    ("net_out", "⑥ 请输入上行带宽 (Mbps，如 10)："),
-    ("sys_pwd", "⑦ 请输入系统密码 (建议私聊执行本向导)："),
-    ("expire_time", "⑧ 请输入到期时间 (YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS)："),
+    ("sys_disk_iops", "⑥ 请输入系统盘 iops (如 40000，不清楚可填 0 由系统分配)："),
+    ("net_out", "⑦ 请输入上行带宽 (Mbps，如 10)："),
+    ("sys_pwd", "⑧ 请输入系统密码 (建议私聊执行本向导)："),
+    ("expire_time", "⑨ 请输入到期时间 (YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS)："),
 ]
 
 
@@ -160,16 +161,22 @@ async def server_screenshot(
     except Exception as exc:  # noqa: BLE001
         return f"{host_header(label, hostid)} 截图解码失败：{exc}"
     fd, path = tempfile.mkstemp(prefix="qz_thumb_", suffix=".png")
-    with os.fdopen(fd, "wb") as f:
-        f.write(raw)
-    await event.send(
-        event.chain_result(
-            [
-                Comp.Plain(f"{host_header(label, hostid)} 运行截图："),
-                Comp.Image.fromFileSystem(path),
-            ]
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(raw)
+        await event.send(
+            event.chain_result(
+                [
+                    Comp.Plain(f"{host_header(label, hostid)} 运行截图："),
+                    Comp.Image.fromFileSystem(path),
+                ]
+            )
         )
-    )
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
     return None
 
 
@@ -254,17 +261,11 @@ async def server_iso_list(plugin: Any, event: AstrMessageEvent, alias: str = "")
     return f"{host_header(label, hostid)} iso 文件列表\n\n" + "\n".join(items)
 
 
-async def _emit_sensitive(plugin: Any, event: AstrMessageEvent, full_text: str) -> None:
-    """群聊：脱敏发群里 + 私聊发全文；私聊：直接发全文。返回 None。"""
-    if is_group_chat(event) and plugin.cfg.redact_in_group:
-        await event.send(event.plain_result(redact_secrets(full_text)))
-        ok = await send_private_message(plugin, event, full_text)
-        if not ok:
-            await event.send(
-                event.plain_result("⚠️ 完整内容含凭证，请私聊执行该命令查看。")
-            )
-        return
-    await event.send(event.plain_result(full_text))
+async def _emit_sensitive(
+    plugin: Any, event: AstrMessageEvent, safe_text: str, full_text: str
+) -> None:
+    """群聊：群里发 safe_text(不含凭证) + 私聊发 full_text；私聊：直接发 full_text。"""
+    await emit_sensitive(plugin, event, safe_text, full_text)
 
 
 async def server_vnc(
@@ -277,8 +278,9 @@ async def server_vnc(
     if err:
         return f"{host_header(label, hostid)} 获取VNC失败：{err}"
     url = (data or {}).get("url", "")
+    safe = f"{host_header(label, hostid)} VNC 远程地址已通过私聊发送（含一次性凭证，请勿转发）。"
     full = f"{host_header(label, hostid)} VNC 远程地址：{url}\n（地址含一次性凭证，请勿转发，及时使用）"
-    await _emit_sensitive(plugin, event, full)
+    await _emit_sensitive(plugin, event, safe, full)
     return None
 
 
@@ -297,8 +299,9 @@ async def server_panel(
     if not host_name or not panel_pwd:
         return f"{host_header(label, hostid)} 缺少 host_name 或 panel_password，无法生成控制台链接。"
     url = plugin.client.build_panel_url(host_name, panel_pwd)
+    safe = f"{host_header(label, hostid)} 独立控制台登录链接已通过私聊发送（含面板密码，请勿转发）。"
     full = f"{host_header(label, hostid)} 独立控制台链接：\n{url}\n（链接含面板密码明文，请勿在群内转发）"
-    await _emit_sensitive(plugin, event, full)
+    await _emit_sensitive(plugin, event, safe, full)
     return None
 
 
@@ -389,8 +392,9 @@ async def server_reset_os_pwd(
     )
     if err:
         return f"{host_header(label, hostid)} 重置失败：{err}"
+    safe = f"{host_header(label, hostid)} 系统密码已重置（新密码已通过私聊发送）。"
     full = f"{host_header(label, hostid)} 系统密码已重置为：{password}"
-    await _emit_sensitive(plugin, event, full)
+    await _emit_sensitive(plugin, event, safe, full)
     return None
 
 
@@ -408,8 +412,9 @@ async def server_reset_panel_pwd(
     )
     if err:
         return f"{host_header(label, hostid)} 重置失败：{err}"
+    safe = f"{host_header(label, hostid)} 面板密码已重置（新密码已通过私聊发送）。"
     full = f"{host_header(label, hostid)} 面板密码已重置为：{password}"
-    await _emit_sensitive(plugin, event, full)
+    await _emit_sensitive(plugin, event, safe, full)
     return None
 
 
@@ -423,8 +428,15 @@ async def server_reinstall(
     _, err = await safe_call(plugin, plugin.client.post(E.INSTALL_OS, body))
     if err:
         return f"{host_header(label, hostid)} 重装失败：{err}"
-    full = f"{host_header(label, hostid)} 已发起重装系统请求\n镜像：{template}\n新密码：{password}\n⚠️ 重装会清空系统盘，耗时较长。"
-    await _emit_sensitive(plugin, event, full)
+    safe = (
+        f"{host_header(label, hostid)} 已发起重装系统请求\n镜像：{template}\n"
+        f"⚠️ 重装会清空系统盘，耗时较长。（新密码已通过私聊发送）"
+    )
+    full = (
+        f"{host_header(label, hostid)} 已发起重装系统请求\n镜像：{template}\n"
+        f"新密码：{password}\n⚠️ 重装会清空系统盘，耗时较长。"
+    )
+    await _emit_sensitive(plugin, event, safe, full)
     return None
 
 
@@ -525,9 +537,11 @@ async def server_ip_del(
     return f"{host_header(label, hostid)} 已删除 IP：{ip}"
 
 
-def _format_create_summary(data: dict[str, Any]) -> str:
+def _format_create_summary(data: dict[str, Any], safe: bool = False) -> str:
     if not data:
         return "创建请求已提交，未返回实例详情。"
+    pwd = "****" if safe else data.get("os_password")
+    ppwd = "****" if safe else data.get("panel_password")
     rows = [
         ("实例ID", data.get("id")),
         ("标识", data.get("host_name")),
@@ -535,12 +549,47 @@ def _format_create_summary(data: dict[str, Any]) -> str:
         ("内网IP", data.get("local_ip")),
         ("状态", data.get("state_name")),
         ("系统", data.get("os_name")),
-        ("系统密码", data.get("os_password")),
-        ("面板密码", data.get("panel_password")),
+        ("系统密码", pwd),
+        ("面板密码", ppwd),
         ("远程地址", data.get("remote_addr")),
         ("远程端口", data.get("remote_port")),
     ]
     return "✅ 云主机创建成功\n\n" + fmt_kv(rows)
+
+
+# openHost 的 OpenAPI required 字段；未由向导收集的用空值填充，依赖“可空”语义。
+_OPENHOST_REQUIRED_STR_DEFAULTS = {
+    "cpu_limit": "",
+    "sys_disk_read": "",
+    "sys_disk_write": "",
+    "data_disk_size": "",
+    "data_disk_iops": "",
+    "data_disk_read": "",
+    "data_disk_write": "",
+    "net_in": "",
+    "snapshot": "",
+    "backups": "",
+    "max_reinstall_num": "",
+    "ip_num": "",
+    "flow_limit": "",
+    "line_id": "",
+}
+_OPENHOST_REQUIRED_INT_DEFAULTS = {"port_num": 0, "domain_num": 0}
+
+
+def _build_openhost_body(collected: dict[str, Any]) -> dict[str, Any]:
+    """把向导收集的字段补全为 openHost 所需的完整请求体。
+
+    required 中未收集的字符串字段填空串、整数字段填 0；``buy_time`` 未提供则取当前时间。
+    """
+    body: dict[str, Any] = dict(collected)
+    for k, v in _OPENHOST_REQUIRED_STR_DEFAULTS.items():
+        body.setdefault(k, v)
+    for k, v in _OPENHOST_REQUIRED_INT_DEFAULTS.items():
+        body.setdefault(k, v)
+    if not body.get("buy_time"):
+        body["buy_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return body
 
 
 async def server_create(plugin: Any, event: AstrMessageEvent) -> str | None:
@@ -557,16 +606,21 @@ async def server_create(plugin: Any, event: AstrMessageEvent) -> str | None:
             return
         if state["confirm_pending"]:
             if text in ("确认", "确定", "yes", "y", "ok", "继续"):
-                body = dict(state["data"])
+                body = _build_openhost_body(state["data"])
                 data, err = await safe_call(
                     plugin, plugin.client.post(E.OPEN_HOST, body)
                 )
                 if err:
+                    debug_body = dict(body)
+                    if debug_body.get("sys_pwd"):
+                        debug_body["sys_pwd"] = "****"
                     await ev.send(
-                        ev.plain_result(f"❌ 创建失败：{err}\n提交参数：{body}")
+                        ev.plain_result(f"❌ 创建失败：{err}\n提交参数：{debug_body}")
                     )
                 else:
-                    await ev.send(ev.plain_result(_format_create_summary(data or {})))
+                    safe = _format_create_summary(data or {}, safe=True)
+                    full = _format_create_summary(data or {}, safe=False)
+                    await emit_sensitive(plugin, ev, safe, full)
             else:
                 await ev.send(ev.plain_result("已取消创建。"))
             controller.stop()

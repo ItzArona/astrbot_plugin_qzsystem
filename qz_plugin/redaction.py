@@ -24,6 +24,8 @@ from typing import Any
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, MessageChain
 
+from .permissions import is_group_chat
+
 # 匹配 http(s)://... 或 base64 图片数据等长串里的密码 query 参数
 _PWD_QUERY_RE = re.compile(r"(password|panel_password)=([^&\s]+)", re.IGNORECASE)
 # 纯密码行/字段
@@ -53,6 +55,32 @@ def redact_info_dict(info: dict[str, Any]) -> dict[str, Any]:
         if k in redacted and redacted[k]:
             redacted[k] = _MASK
     return redacted
+
+
+async def emit_sensitive(
+    plugin: "StarLike",
+    event: AstrMessageEvent,
+    safe_text: str,
+    full_text: str,
+) -> None:
+    """发送含凭证的命令结果。
+
+    - 群聊 + redact_in_group 开启：群里发 ``safe_text``（不含凭证），私聊发 ``full_text``；
+      私聊失败则在群里提示用户私聊重发。
+    - 私聊 或 群聊但未开启脱敏：直接发 ``full_text``。
+
+    ``safe_text`` 由调用方负责保证不含任何凭证，本函数不再依赖正则脱敏，
+    避免因输出格式与正则不匹配导致凭证泄露。
+    """
+    if is_group_chat(event) and plugin.cfg.redact_in_group:
+        await event.send(event.plain_result(safe_text))
+        ok = await send_private_message(plugin, event, full_text)
+        if not ok:
+            await event.send(
+                event.plain_result("⚠️ 完整内容含凭证，请私聊执行该命令查看。")
+            )
+        return
+    await event.send(event.plain_result(full_text))
 
 
 async def send_private_message(
