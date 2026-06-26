@@ -171,4 +171,4 @@ WebUI → 插件配置 → 「轻舟云主机管理」，填写：
 
 本项目基于 **GNU Affero General Public License v3.0**（AGPL-3.0-or-later）授权，详见 [LICENSE](LICENSE)。
 
-任何对本插件的修改并通过网络提供服务的行为，必须向用户提供获取修改后源代码的途径（AGPL §13）。
+任何对本插件的修改并通过网络提供服务的行为，必须向用户提供获取修改后源代码的途径（AGPL 3）。
