@@ -37,7 +37,7 @@ from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star
 
-from qz_plugin.client import QzsystemClient
+from qz_plugin.client import build_client
 from qz_plugin.config import PluginConfig
 from qz_plugin.render import emit
 from qz_plugin.store import bind_user, resolve_hostid, unbind_user
@@ -117,22 +117,20 @@ HELP_TEXT = """轻舟云主机管理插件 · 命令帮助
 联调：/test ping [别名]   (管理员)
 
 说明：[别名] 可为别名或 hostid 数字；未带则使用 /qz bind 绑定的默认实例。
-含凭证命令请在私聊执行；高危操作末尾需带 confirm。"""
+含凭证命令请在私聊执行；高危操作末尾需带 confirm。
+后端：WebUI 配置“后端类型”选 v1(标准 qzsystem) 或 whmcs(qzweb/至简Stack)；whmcs 后端不支持截图/历史监控/时间同步/BIOS/IP增删/ISO/NAT域名/面板密码重置。"""
 
 
 class QzsystemPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig) -> None:
         super().__init__(context)
         self.cfg = PluginConfig(config or {})
-        self.client = QzsystemClient(
-            base_url=self.cfg.base_url,
-            signature=self.cfg.signature,
-            apiuser=self.cfg.apiuser,
-            timeout=self.cfg.request_timeout,
-        )
+        self.client = build_client(self.cfg)
         if not self.client.configured:
+            cred = "apikey" if self.cfg.backend == "whmcs" else "signature/apiuser"
             logger.warning(
-                "[qzsystem] 凭证未配置，请在 WebUI 插件配置里填写 base_url/signature/apiuser。"
+                f"[qzsystem] 凭证未配置（后端={self.cfg.backend}），"
+                f"请在 WebUI 插件配置里填写 base_url/{cred}。"
             )
 
     async def terminate(self) -> None:

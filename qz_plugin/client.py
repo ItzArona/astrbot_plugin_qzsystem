@@ -142,3 +142,30 @@ class QzsystemClient:
 
     async def terminate(self) -> None:
         await self.close()
+
+
+def build_client(cfg: Any) -> QzsystemClient | Any:
+    """按配置的 ``backend`` 选择并构造客户端。
+
+    Args:
+        cfg: :class:`qz_plugin.config.PluginConfig`。
+
+    Returns:
+        v1 后端返回 :class:`QzsystemClient`；whmcs 后端返回
+        :class:`qz_plugin.whmcs_client.WhmcsClient`。两者接口一致。
+    """
+    backend = cfg.backend
+    if backend == "whmcs":
+        from .whmcs_client import WhmcsClient
+
+        return WhmcsClient(
+            base_url=cfg.base_url,
+            apikey=cfg.apikey,
+            timeout=cfg.request_timeout,
+        )
+    return QzsystemClient(
+        base_url=cfg.base_url,
+        signature=cfg.signature,
+        apiuser=cfg.apiuser,
+        timeout=cfg.request_timeout,
+    )

@@ -2,21 +2,36 @@
   "base_url": {
     "description": "轻舟云主控 API 基础地址",
     "type": "string",
-    "hint": "如 https://xxx.qzsystem.com ，不要带末尾斜杠。所有接口将拼接 /api/v1/* 。",
+    "hint": "如 http://xxx.xxx:3000 或 https://xxx.qzsystem.com ，不要带末尾斜杠。根据“后端类型”拼接 /api/v1/* 或 /api/whmcs/* 。",
     "default": "",
     "obvious_hint": true
   },
-  "signature": {
-    "description": "主控后台第三方财务 key (signature)",
+  "backend": {
+    "description": "后端类型",
     "type": "string",
-    "hint": "主控后台 → 第三方财务 里获取的密钥。请在此填写，留空则所有命令都会因凭证不全而失败。",
+    "options": ["v1", "whmcs"],
+    "labels": ["v1 (标准 qzsystem 主控)", "whmcs (qzweb/至简Stack 主控)"],
+    "hint": "标准轻舟云主控选 v1(用 signature+apiuser)；对接 qzweb(至简Stack) 财务接口选 whmcs(用 apikey)。留空时按已填凭证自动判断。",
+    "default": ""
+  },
+  "signature": {
+    "description": "主控后台第三方财务 key (signature) - 仅 v1 后端",
+    "type": "string",
+    "hint": "v1 后端专用：主控后台 → 第三方财务 里获取的密钥。whmcs 后端无需填写。",
     "default": "",
     "obvious_hint": true
   },
   "apiuser": {
-    "description": "财务用户名 (apiuser)",
+    "description": "财务用户名 (apiuser) - 仅 v1 后端",
     "type": "string",
-    "hint": "财务中开通产品的用户名。",
+    "hint": "v1 后端专用：财务中开通产品的用户名。whmcs 后端无需填写。",
+    "default": "",
+    "obvious_hint": true
+  },
+  "apikey": {
+    "description": "apikey - 仅 whmcs 后端",
+    "type": "string",
+    "hint": "whmcs 后端专用：qzweb 主控后台配置的 apikey（对应财务插件里的 accesshash）。v1 后端无需填写。",
     "default": "",
     "obvious_hint": true
   },

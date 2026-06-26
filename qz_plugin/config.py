@@ -30,12 +30,31 @@ class PluginConfig:
         return str(self._c.get("base_url", "") or "").strip()
 
     @property
+    def backend(self) -> str:
+        """后端类型：``v1``（标准 qzsystem 主控 /api/v1/*）或 ``whmcs``（qzweb/至简Stack /api/whmcs/*）。
+
+        未配置时根据已填凭证推断：填了 apikey 视为 whmcs，填了 signature 视为 v1，
+        以兼容旧配置。
+        """
+        v = str(self._c.get("backend", "") or "").strip().lower()
+        if v in ("v1", "whmcs"):
+            return v
+        if self.apikey and not self.signature:
+            return "whmcs"
+        return "v1"
+
+    @property
     def signature(self) -> str:
         return str(self._c.get("signature", "") or "").strip()
 
     @property
     def apiuser(self) -> str:
         return str(self._c.get("apiuser", "") or "").strip()
+
+    @property
+    def apikey(self) -> str:
+        """qzweb(whmcs) 后端的 apikey（主控后台配置的 apikey，对应财务插件 accesshash）。"""
+        return str(self._c.get("apikey", "") or "").strip()
 
     @property
     def hosts(self) -> list[dict[str, str]]:
