@@ -58,6 +58,12 @@ async def bind_user(
         return "请提供别名或 hostid，例如：/qz bind web1 或 /qz bind 3145"
     hostid = cfg.alias_to_hostid(value)
     if hostid is None:
+        if not cfg.hosts:
+            return (
+                "别名表为空或条目不完整。请直接传 hostid 数字：/qz bind <实例id>（如 /qz bind 3145）；"
+                "或在 WebUI 插件配置的“云主机别名表”里点 + 添加一条，"
+                "务必填好“别名”和“云主机实例 id”两个字段（不能留空）后再 /qz bind <别名>。"
+            )
         return (
             f"未找到别名 “{value}”。请要么直接传 hostid 数字（如 /qz bind 3145），"
             f"要么先在 WebUI 插件配置的“云主机别名表”里添加一条：别名={value}，hostid=<实例id>。"

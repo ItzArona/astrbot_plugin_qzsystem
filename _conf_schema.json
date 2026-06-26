@@ -9,9 +9,9 @@
   "signature": {
     "description": "主控后台第三方财务 key (signature)",
     "type": "string",
-    "hint": "主控后台 → 第三方财务 里获取的密钥。保存后不在面板明文展示。",
+    "hint": "主控后台 → 第三方财务 里获取的密钥。请在此填写，留空则所有命令都会因凭证不全而失败。",
     "default": "",
-    "invisible": true
+    "obvious_hint": true
   },
   "apiuser": {
     "description": "财务用户名 (apiuser)",

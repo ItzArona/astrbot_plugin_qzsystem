@@ -60,6 +60,17 @@ class QzsystemClient:
     def configured(self) -> bool:
         return bool(self.base_url and self.signature and self.apiuser)
 
+    def missing_credentials(self) -> list[str]:
+        """返回缺失的凭证字段名列表；全填好返回空列表。"""
+        missing: list[str] = []
+        if not self.base_url:
+            missing.append("base_url（轻舟云主控 API 基础地址）")
+        if not self.signature:
+            missing.append("signature（主控后台第三方财务 key）")
+        if not self.apiuser:
+            missing.append("apiuser（财务用户名）")
+        return missing
+
     def _headers(self) -> dict[str, str]:
         # 文档中 header 名有时带尾随空格，发送时统一 strip
         return {
@@ -83,8 +94,10 @@ class QzsystemClient:
     ) -> dict[str, Any]:
         """POST JSON，返回解析后的响应字典。code != 200 抛 QzsystemError。"""
         if not self.configured:
+            missing = self.missing_credentials()
             raise QzsystemError(
-                "qzsystem 凭证未配置：请在插件配置里填写 base_url / signature / apiuser"
+                "qzsystem 凭证未配置，请在 WebUI 插件配置里补填以下项："
+                + "、".join(missing)
             )
         url = self.base_url + path
         session = await self._ensure_session()
